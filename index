@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FARRAS-Simulator Pembagian Beban - PLN Dispatcher</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body { padding: 24px; background: #f6f8fa; }
+    .card { border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.06); }
+    .monospace { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; }
+    .small-muted { font-size: .85rem; color: #6c757d; }
+    .unit-row { gap: 8px; }
+    footer { margin-top: 18px; font-size: .85rem; color:#666 }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="row">
+      <div class="col-12">
+        <h2>Simulator Pembagian Beban (Droop Control)</h2>
+        <p class="small-muted">Interaktif — tambahkan/menghapus unit, ubah kapasitas & droop, lalu ubah gangguan beban untuk melihat pembagian daya dan deviasi frekuensi.</p>
+      </div>
+    </div>
+
+    <div class="row mt-3">
+      <div class="col-lg-6 mb-3">
+        <div class="card p-3">
+          <h5>Pengaturan Sistem</h5>
+
+          <div class="mb-2">
+            <label class="form-label">Frekuensi nominal (Hz)</label>
+            <input id="fnom" type="number" class="form-control" value="50" step="0.1">
+          </div>
+
+          <div class="mb-2">
+            <label class="form-label">Load damping D (MW/Hz)</label>
+            <input id="damping" type="number" class="form-control" value="10" step="0.1">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Gangguan beban ΔP (MW) — positif = beban naik (pabrik nyala), negatif = beban turun</label>
+            <input id="deltaP" type="number" class="form-control" value="120" step="1">
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="m-0">Unit Pembangkit</h6>
+            <div>
+              <button id="btnAddUnit" class="btn btn-sm btn-success">Tambah Unit</button>
+              <button id="btnReset" class="btn btn-sm btn-outline-secondary">Reset contoh</button>
+            </div>
+          </div>
+
+          <div id="units" class="d-flex flex-column gap-2">
+            <!-- unit rows akan di-render di sini -->
+          </div>
+
+        </div>
+      </div>
+
+      <div class="col-lg-6 mb-3">
+        <div class="card p-3">
+          <h5>Hasil Perhitungan</h5>
+          <div class="row">
+            <div class="col-12 mb-2">
+              <table class="table table-sm table-bordered mb-2">
+                <thead class="table-light"><tr><th>Parameter</th><th>Nilai</th></tr></thead>
+                <tbody id="summaryTbody">
+                  <!-- ringkasan -->
+                </tbody>
+              </table>
+            </div>
+            <div class="col-12">
+              <h6>Kontribusi setiap unit (MW)</h6>
+              <div style="height:280px">
+                <canvas id="barChart"></canvas>
+              </div>
+            </div>
+            <div class="col-12 mt-2">
+              <h6>Detail per unit</h6>
+              <div id="detailTableWrapper"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div>Petunjuk: Rumus yang digunakan — <span class="monospace">S_i = P_rated,i / (droop_i * f_nom)</span>, <span class="monospace">Δf = ΔP / (Σ S_i + D)</span>, <span class="monospace">ΔP_i = S_i × Δf</span>.</div>
+      <div class="mt-1">Simpan halaman ini sebagai <code>simulator_pembagian_beban.html</code> dan buka di browser. Menggunakan Chart.js dari CDN untuk visualisasi.</div>
+    </footer>
+  </div>
+
+<script>
+// Data default (dari contoh di dokumen)
+let unitsData = [
+  { id: genId(), name: 'Unit A', prated: 150, droop: 0.05 },
+  { id: genId(), name: 'Unit B', prated: 100, droop: 0.04 },
+  { id: genId(), name: 'Unit C', prated: 50, droop: 0.05 }
+];
+
+function genId(){ return 'u' + Math.random().toString(36).slice(2,9); }
+
+// --- rendering unit rows ---
+const unitsDiv = document.getElementById('units');
+function renderUnits(){
+  unitsDiv.innerHTML = '';
+  unitsData.forEach((u, idx) => {
+    const row = document.createElement('div');
+    row.className = 'd-flex unit-row align-items-center';
+    row.innerHTML = `
+      <input class="form-control form-control-sm me-2" style="width:110px" data-field="name" value="${u.name}">
+      <input class="form-control form-control-sm me-2" data-field="prated" type="number" style="width:120px" value="${u.prated}" step="1">
+      <input class="form-control form-control-sm me-2" data-field="droop" type="number" style="width:110px" value="${u.droop}" step="0.001">
+      <div class="small-muted me-2">MW | droop (fraction)</div>
+      <button class="btn btn-sm btn-outline-danger btn-remove">Hapus</button>
+    `;
+
+    // wiring inputs
+    const inputs = row.querySelectorAll('input');
+    inputs.forEach(inp => {
+      inp.addEventListener('input', (e) => {
+        const field = e.target.getAttribute('data-field');
+        if (field === 'prated') u.prated = parseFloat(e.target.value) || 0;
+        if (field === 'droop') u.droop = parseFloat(e.target.value) || 0;
+        if (field === 'name') u.name = e.target.value;
+        computeAndRender();
+      });
+    });
+
+    row.querySelector('.btn-remove').addEventListener('click', () => {
+      unitsData = unitsData.filter(x => x.id !== u.id);
+      renderUnits();
+      computeAndRender();
+    });
+
+    unitsDiv.appendChild(row);
+  });
+}
+
+// --- inputs ---
+const fnomInput = document.getElementById('fnom');
+const dampingInput = document.getElementById('damping');
+const deltaPInput = document.getElementById('deltaP');
+
+fnomInput.addEventListener('input', computeAndRender);
+dampingInput.addEventListener('input', computeAndRender);
+deltaPInput.addEventListener('input', computeAndRender);
+
+// buttons
+document.getElementById('btnAddUnit').addEventListener('click', () => {
+  const nextIndex = unitsData.length + 1;
+  unitsData.push({ id: genId(), name: 'Unit ' + nextIndex, prated: 50, droop: 0.05 });
+  renderUnits(); computeAndRender();
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  unitsData = [
+    { id: genId(), name: 'Unit A', prated: 150, droop: 0.05 },
+    { id: genId(), name: 'Unit B', prated: 100, droop: 0.04 },
+    { id: genId(), name: 'Unit C', prated: 50, droop: 0.05 }
+  ];
+  fnomInput.value = 50; dampingInput.value = 10; deltaPInput.value = 120;
+  renderUnits(); computeAndRender();
+});
+
+// --- calculations ---
+function calculate(prated, droop, fnom){
+  // avoid division by zero
+  if (!droop || !fnom) return { S: 0 };
+  const S = prated / (droop * fnom);
+  return { S };
+}
+
+function computeSystem(){
+  const fnom = parseFloat(fnomInput.value) || 50;
+  const D = parseFloat(dampingInput.value) || 0;
+  const deltaP = parseFloat(deltaPInput.value) || 0;
+
+  const units = unitsData.map(u => {
+    const { S } = calculate(u.prated, u.droop, fnom);
+    return { ...u, S };
+  });
+
+  const Rsys = units.reduce((s,u)=>s + (u.S||0), 0);
+  const df = Rsys + D === 0 ? 0 : deltaP / (Rsys + D);
+  const unitContribs = units.map(u => ({ ...u, dP: u.S * df }));
+  const dampingContrib = D * df;
+  const totalGen = unitContribs.reduce((s,u)=>s + u.dP, 0);
+  const finalFreq = fnom - df;
+
+  return {
+    fnom, D, deltaP, units: unitContribs, Rsys, df, dampingContrib, totalGen, finalFreq
+  };
+}
+
+// --- rendering results ---
+let chart = null;
+function computeAndRender(){
+  const res = computeSystem();
+
+  // summary table
+  const summaryTbody = document.getElementById('summaryTbody');
+  summaryTbody.innerHTML = '';
+  const rows = [
+    ['Frekuensi nominal (Hz)', res.fnom.toFixed(3)],
+    ['Total slope sistem ΣS (MW/Hz)', res.Rsys.toFixed(3)],
+    ['Load damping D (MW/Hz)', res.D.toFixed(3)],
+    ['Gangguan ΔP (MW)', res.deltaP.toFixed(3)],
+    ['Deviasi frekuensi Δf (Hz)', res.df.toFixed(6)],
+    ['Frekuensi akhir (Hz)', res.finalFreq.toFixed(6)],
+    ['Kontribusi generator (MW)', res.totalGen.toFixed(3)],
+    ['Kontribusi beban (damping) (MW)', res.dampingContrib.toFixed(3)],
+  ];
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r[0]}</td><td class='monospace'>${r[1]}</td>`;
+    summaryTbody.appendChild(tr);
+  });
+
+  // detail per unit
+  const detailWrap = document.getElementById('detailTableWrapper');
+  detailWrap.innerHTML = '';
+  const table = document.createElement('table');
+  table.className = 'table table-sm table-striped';
+  table.innerHTML = `<thead class='table-light'><tr><th>Unit</th><th>P_rated (MW)</th><th>droop</th><th>S (MW/Hz)</th><th>ΔP_i (MW)</th></tr></thead>`;
+  const tbody = document.createElement('tbody');
+  res.units.forEach(u => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${u.name}</td><td class='monospace'>${u.prated}</td><td class='monospace'>${u.droop}</td><td class='monospace'>${(u.S||0).toFixed(3)}</td><td class='monospace'>${(u.dP||0).toFixed(3)}</td>`;
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  detailWrap.appendChild(table);
+
+  // chart
+  const labels = res.units.map(u => u.name);
+  const data = res.units.map(u => Number((u.dP||0).toFixed(6)));
+  const ctx = document.getElementById('barChart');
+  if (!chart){
+    chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{ label: 'Kontribusi (MW)', data }]
+      },
+      options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+  } else {
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = data;
+    chart.update();
+  }
+}
+
+// initial render
+renderUnits(); computeAndRender();
+
+</script>
+
+</body>
+</html>
