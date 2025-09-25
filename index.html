@@ -1,400 +1,266 @@
 <!doctype html>
-<html lang="en">
+<html lang="id">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Quiz MAMANGGQOE</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Simulator Pembagian Beban - PLN Dispatcher</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
-    :root{--bg:#0b1220;--card:#0f1724;--accent:#06b6d4;--accent-2:#10b981;--text:#e6eef8;--muted:#9aa8b7}
-    *{box-sizing:border-box}
-    body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;background:linear-gradient(180deg,#061021 0%,#071026 60%);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-    .app{width:100%;max-width:1100px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-radius:12px;padding:20px;box-shadow:0 10px 30px rgba(2,6,23,0.7)}
-    header{display:flex;align-items:center;gap:16px}
-    header h1{margin:0;font-size:20px}
-    .meta{display:flex;gap:12px;margin-top:6px;flex-wrap:wrap}
-    .badge{background:rgba(255,255,255,0.03);padding:6px 10px;border-radius:8px;font-size:13px;color:var(--muted)}
-    .main{display:grid;grid-template-columns:1fr 320px;gap:18px;margin-top:18px}
-    .card{background:var(--card);padding:16px;border-radius:10px}
-    .questionArea{min-height:180px;display:flex;flex-direction:column;gap:12px}
-    .qText{font-size:18px}
-    .options{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .opt{padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);cursor:pointer;border:1px solid rgba(255,255,255,0.03);transition:transform .12s ease,box-shadow .12s,background .12s}
-    .opt:hover{transform:translateY(-4px);box-shadow:0 6px 18px rgba(2,6,23,0.6)}
-    .opt.disabled{pointer-events:none;opacity:0.9}
-    .truefalse{display:flex;gap:10px}
-    .controls{display:flex;gap:8px;align-items:center}
-    button.btn{background:var(--accent);border:none;color:#032; padding:10px 12px;border-radius:8px;cursor:pointer;font-weight:700}
-    button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--text);padding:8px 10px;border-radius:8px}
-    .side{display:flex;flex-direction:column;gap:12px}
-    .stat{display:flex;flex-direction:column;gap:6px}
-    .stat .row{display:flex;justify-content:space-between;font-size:14px;color:var(--muted)}
-    .progress{height:10px;background:rgba(255,255,255,0.04);border-radius:999px;overflow:hidden}
-    .progress > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));width:0%}
-    .legend{display:flex;gap:8px;flex-wrap:wrap}
-    .chip{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:8px;font-size:13px}
-    footer{margin-top:12px;color:var(--muted);font-size:13px}
-    /* animations */
-    .animate-correct{animation:correctFlash .9s ease}
-    .animate-wrong{animation:wrongShake .9s ease}
-    @keyframes correctFlash{0%{box-shadow:0 0 0 rgba(16,185,129,0.0)}50%{box-shadow:0 0 30px rgba(16,185,129,0.25)}100%{box-shadow:0 0 0 rgba(16,185,129,0)}}
-    @keyframes wrongShake{0%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}100%{transform:translateX(0)}}
-    .correct{background:linear-gradient(90deg,rgba(16,185,129,0.12),rgba(16,185,129,0.06));border-color:rgba(16,185,129,0.25)}
-    .wrong{background:linear-gradient(90deg,rgba(239,68,68,0.08),rgba(239,68,68,0.03));border-color:rgba(239,68,68,0.22)}
-    .small{font-size:13px;color:var(--muted)}
-    .question-number{font-weight:700}
-    .controls .hint{font-size:13px;color:var(--muted)}
-    .answer-review{max-height:260px;overflow:auto;padding:8px;border-radius:8px;background:rgba(255,255,255,0.015)}
+    body { padding: 24px; background: #f6f8fa; }
+    .card { border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.06); }
+    .monospace { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; }
+    .small-muted { font-size: .85rem; color: #6c757d; }
+    .unit-row { gap: 8px; }
+    footer { margin-top: 18px; font-size: .85rem; color:#666 }
   </style>
 </head>
 <body>
-  <div class="app" role="application" aria-label="DCS Quiz Emerson English">
-    <header>
-      <div style="width:52px;height:52px;border-radius:10px;background:linear-gradient(90deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:800;color:#012">DCS</div>
-      <div>
-        <h1>DCS Quiz (Emerson) — 100 Multiple Choice + 20 True/False</h1>
-        <div class="meta">
-          <div class="badge">Topics: DCS, Emerson Ovation, Measurement, Communication</div>
-          <div class="badge">Mode: Research & Test</div>
-          <div class="badge">Visual feedback for correct/incorrect • Shuffle on research</div>
+  <div class="container">
+    <div class="row">
+      <div class="col-12">
+        <h2>Simulator Pembagian Beban (Droop Control)</h2>
+        <p class="small-muted">Interaktif — tambahkan/menghapus unit, ubah kapasitas & droop, lalu ubah gangguan beban untuk melihat pembagian daya dan deviasi frekuensi.</p>
+      </div>
+    </div>
+
+    <div class="row mt-3">
+      <div class="col-lg-6 mb-3">
+        <div class="card p-3">
+          <h5>Pengaturan Sistem</h5>
+
+          <div class="mb-2">
+            <label class="form-label">Frekuensi nominal (Hz)</label>
+            <input id="fnom" type="number" class="form-control" value="50" step="0.1">
+          </div>
+
+          <div class="mb-2">
+            <label class="form-label">Load damping D (MW/Hz)</label>
+            <input id="damping" type="number" class="form-control" value="10" step="0.1">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Gangguan beban ΔP (MW) — positif = beban naik (pabrik nyala), negatif = beban turun</label>
+            <input id="deltaP" type="number" class="form-control" value="120" step="1">
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="m-0">Unit Pembangkit</h6>
+            <div>
+              <button id="btnAddUnit" class="btn btn-sm btn-success">Tambah Unit</button>
+              <button id="btnReset" class="btn btn-sm btn-outline-secondary">Reset contoh</button>
+            </div>
+          </div>
+
+          <div id="units" class="d-flex flex-column gap-2">
+            <!-- unit rows akan di-render di sini -->
+          </div>
+
         </div>
       </div>
-    </header>
 
-    <div class="main">
-      <section class="card">
-        <div class="questionArea">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start">
-            <div>
-              <div class="question-number small">Question <span id="qIndex">1</span> / <span id="qTotal">120</span></div>
-              <div class="qText" id="qText">Loading question...</div>
+      <div class="col-lg-6 mb-3">
+        <div class="card p-3">
+          <h5>Hasil Perhitungan</h5>
+          <div class="row">
+            <div class="col-12 mb-2">
+              <table class="table table-sm table-bordered mb-2">
+                <thead class="table-light"><tr><th>Parameter</th><th>Nilai</th></tr></thead>
+                <tbody id="summaryTbody">
+                  <!-- ringkasan -->
+                </tbody>
+              </table>
             </div>
-            <div style="text-align:right">
-              <div class="small">Type: <span id="qType">MCQ</span></div>
-              <div class="small">Score: <span id="score">0</span></div>
+            <div class="col-12">
+              <h6>Kontribusi setiap unit (MW)</h6>
+              <div style="height:280px">
+                <canvas id="barChart"></canvas>
+              </div>
             </div>
-          </div>
-
-          <div id="options" class="options" aria-live="polite"></div>
-
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
-            <div class="controls">
-              <button class="btn" id="nextBtn" onclick="skipQuestion()">Skip</button>
-              <button class="ghost" id="researchBtn" title="Research (reshuffle questions)" onclick="reshuffle()">Research</button>
-              <div class="hint" style="margin-left:8px">Answer will automatically advance to next question</div>
-            </div>
-            <div class="small">Time per question: <span id="timer">—</span></div>
-          </div>
-        </div>
-      </section>
-
-      <aside class="side">
-        <div class="card stat">
-          <div class="row"><div>Score</div><div id="scorePanel">0</div></div>
-          <div class="row"><div>Correct</div><div id="correctCount">0</div></div>
-          <div class="row"><div>Wrong</div><div id="wrongCount">0</div></div>
-          <div class="row"><div>Skipped</div><div id="skipCount">0</div></div>
-
-          <div style="margin-top:8px">
-            <div class="small">Progress</div>
-            <div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <strong>Controls</strong>
-            <div class="legend">
-              <div class="chip">MCQ ×100</div>
-              <div class="chip">True/False ×20</div>
+            <div class="col-12 mt-2">
+              <h6>Detail per unit</h6>
+              <div id="detailTableWrapper"></div>
             </div>
           </div>
-
-          <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
-            <button class="ghost" id="reviewBtn" onclick="openReview()">Review Answers</button>
-            <button class="ghost" onclick="resetAll()">Reset (Start Over)</button>
-            <button class="ghost" onclick="downloadResults()">Download Results (JSON)</button>
-          </div>
         </div>
-
-        <div class="card">
-          <strong>Notes</strong>
-          <div class="small" style="margin-top:8px">After answering, the system shows visual feedback (green/red) then jumps to the next question.</div>
-          <div style="margin-top:12px" class="small">Click "Research" to reshuffle question order and restart scoring (results before reshuffle can be downloaded).</div>
-        </div>
-
-      </aside>
+      </div>
     </div>
 
     <footer>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div>Copyright &copy; DCS Quiz • Auto-generated — for research & practice</div>
-        <div class="small">Version: 1.0 • 120 questions</div>
-      </div>
+      <div>Petunjuk: Rumus yang digunakan — <span class="monospace">S_i = P_rated,i / (droop_i * f_nom)</span>, <span class="monospace">Δf = ΔP / (Σ S_i + D)</span>, <span class="monospace">ΔP_i = S_i × Δf</span>.</div>
+      <div class="mt-1">Simpan halaman ini sebagai <code>simulator_pembagian_beban.html</code> dan buka di browser. Menggunakan Chart.js dari CDN untuk visualisasi.</div>
     </footer>
   </div>
 
-  <script>
-    // ===================== QUESTION POOL (curated) =====================
-    // We'll create a curated pool of MCQs and TF statements, then build a 100 MCQ + 20 TF quiz.
-    const mcqPool = [
-      {q:'What does DCS stand for in industrial control systems?', choices:['Distributed Control System','Direct Control Server','Digital Control Suite','Device Communication Service']},
-      {q:'Which company provides the Ovation DCS commonly used in power plants?', choices:['Emerson','Honeywell','Siemens','Schneider Electric']},
-      {q:'Which is the standard current loop signal used for transmitters?', choices:['0-10 V','1-5 V','4-20 mA','0-20 mA']},
-      {q:'HART protocol communicates concurrently over which signal?', choices:['Modbus TCP','RS-232','4-20 mA analog loop','Ethernet']},
-      {q:'FOUNDATION Fieldbus is best described as which type of communication?', choices:['Point-to-point analog','Serial RS-485','Deterministic digital bus','Wireless mesh network']},
-      {q:'What is the main difference between accuracy and precision?', choices:['Accuracy is systematic bias, precision is random error','Accuracy is closeness to true value, precision is repeatability','Precision is calibration, accuracy is resolution','There is no difference']},
-      {q:'Which sensor type is commonly used to measure temperature in DCS?', choices:['Load cell','RTD (PT100)','LVDT','Hall effect sensor']},
-      {q:'What is the typical role of a transmitter in a 4-20 mA loop?', choices:['To boost voltage','To convert sensor output to a standard signal','To store data locally','To supply power to PLC']},
-      {q:'Modbus TCP uses which transport protocol?', choices:['UDP','TCP/IP','Serial RS-232','Bluetooth']},
-      {q:'What does PID stand for in control systems?', choices:['Proportional-Integral-Derivative','Pulse-Integral-Derivative','Process-Input-Device','Power-Input-Dump']},
-      {q:'Integral reset in PID controllers helps to?', choices:['Reduce overshoot','Eliminate steady-state offset','Increase noise','Slow actuator']},
-      {q:'FOUNDATION Fieldbus H1 typically operates at what speed?', choices:['31.25 kbps','10 Mbps','100 Mbps','1 Gbps']},
-      {q:'What is the purpose of calibrating a transmitter?', choices:['To replace the sensor','To adjust linearity and accuracy','To increase process pressure','To change wiring']},
-      {q:'An advantage of 4-20 mA loop is?', choices:['Unaffected by cable resistance','Low linearity','Noise immunity and open-circuit detection','Cheaper than voltage signals']},
-      {q:'What does a valve positioner do?', choices:['Regulate power to PLC','Manually move an actuator','Control valve position according to control signal','Measure process pressure']},
-      {q:'Controller redundancy primarily provides?', choices:['Faster processing','Reduced wiring cost','Higher system availability during failures','Fewer sensors required']},
-      {q:'HART stands for?', choices:['Highway Addressable Remote Transducer','Hardware Automated Remote Telemetry','Hybrid Analog Remote Transmitter','High Accuracy Remote Telemetry']},
-      {q:'What is Emerson AMS mainly used for?', choices:['Asset management and device calibration','Motor directive control','User management in DCS','Long-term historian storage']},
-      {q:'A loop isolator is used to?', choices:['Increase loop voltage','Protect against ground loops and interference','Replace the transmitter','Improve sensor accuracy']},
-      {q:'Rangeability of a flowmeter means?', choices:['Operating temperature range','Ratio of maximum to minimum measurable flow','ADC resolution','Signal noise level']},
-      {q:'Linear characteristic of a sensor implies?', choices:['Output inversely proportional to input','Output constant','Output proportional to input','Random output']},
-      {q:'Smart transmitters typically can do?', choices:['Only change voltage','Digital communication, diagnostics, and HART configuration','Drive actuators directly','Replace PLC logic']},
-      {q:'Deadband in control refers to?', choices:['Physical valve travel','Small PV change that does not cause controller action','Communication latency','Reference voltage']},
-      {q:'Point level switches are used to?', choices:['Measure continuous level','Detect on/off level conditions','Measure density','Control flow rate']},
-      {q:'What is bumpless transfer in PID context?', choices:['A method to avoid transients when switching controllers or setpoints','A way to increase integral action','A calibration step','A hardware procedure']},
-      {q:'Why store process signals in a historian?', choices:['Backup power','Trend analysis and long-term storage','To reduce signal noise','To reduce IO count']},
-      {q:'Alarm shelving in a DCS does what?', choices:['Permanently deletes alarm','Temporarily suppresses an alarm with acknowledgement','Increases alarm priority','Disables input']},
-      {q:'Sensor transient response matters for?', choices:['Power capacity','How fast the sensor follows process changes','Max voltage output','Number of wires']},
-      {q:'Vortex flowmeters are suitable for measuring?', choices:['Particle concentration','Gases and liquids with turbulent flow','Electrical current','High vacuum pressure']},
-      {q:'What does "burn" mean for HART transmitters?', choices:['Burning a material','Uploading configuration to transmitter EEPROM via HART','Measuring temperature','Increasing signal range']},
-      {q:'Pressure transmitters are commonly connected to process using?', choices:['Twisted pair cable directly','Direct digital inputs','Impulse piping (tubing) and impulse isolation','Wireless only']},
-      {q:'Fail-safe design for a valve means?', choices:['Valve stops in current position on failure','Valve moves to safe position on failure (e.g., closed or open)','Valve self-calibrates','Valve reduces flow gradually']},
-      {q:'What is the purpose of signal grounding and shielding?', choices:['Increase signal amplitude','Reduce electromagnetic interference and noise','Cool down transmitters','Provide backup power']},
-      {q:'An LVDT sensor measures?', choices:['Temperature','Linear displacement','Flow rate','Pressure']},
-      {q:'What is the typical unit for flow measurement by turbine flowmeter?', choices:['Ohms','Liters per minute or m3/h','Kelvin','Pascal']},
-      {q:'What is "auto-tune" for a PID controller?', choices:['Automatic tuning of PID parameters based on process response','Automatic restart after power loss','Automatic alarm generation','Automatic historian backup']},
-      {q:'Digital twin in process control refers to?', choices:['A duplicate PLC hardware','A virtual model of the process used for analysis and testing','A backup controller','A sensor redundancy scheme']},
-      {q:'What does RTD stand for?', choices:['Resistor Temperature Device','Resistance Temperature Detector','Real-time Transducer Device','Remote Temperature Drive']},
-      {q:'What is a common material for RTD sensing element?', choices:['Platinum (PT100)','Copper tubing','Silicon rubber','Glass']},
-      {q:'What is the main advantage of Ethernet-based I/O?', choices:['Lower latency than all fieldbuses','Simpler point-to-point analog wiring','Higher bandwidth, easier integration with IT networks','Requires no configuration']},
-      {q:'What is "scan time" in a DCS?', choices:['Time for an operator shift','Time taken for control algorithm to execute through IO and logic','Time to calibrate a transmitter','Network latency only']},
-      {q:'What is "mean time between failures" (MTBF)?', choices:['Average repair time','Average time between system failures','Time to failure for first unit only','Time to replace hardware']},
-      {q:'What does "HMI" stand for?', choices:['Hardware Management Interface','Human-Machine Interface','High-speed Measurement Instrument','Host Monitoring Infrastructure']},
-      {q:'What is the role of a PLC vs DCS?', choices:['PLC is for small discrete control, DCS for continuous process control and large-scale integration','PLC always replaces DCS','DCS is only for safety systems','There is no difference']},
-      {q:'What is "faceplate" in DCS HMI?', choices:['A physical plate on the control panel','A graphical control widget representing a device (valve, pump) on HMI','An access keycard','A hardware license file']},
-      {q:'What is the typical purpose of a snapshot/trending tool?', choices:['To redesign IO wiring','To view process variable trends over time for analysis','To generate alarms only','To configure fieldbus devices']},
-      {q:'Why use transmitter trim/calibration in the field?', choices:['To change fieldbus address','To adjust zero/span and ensure accurate readings','To increase loop current','To create backups']},
-      {q:'What is OPC UA used for?', choices:['Physical wiring of sensors','Secure, platform-independent data exchange between automation systems and IT','Old serial communication','Power distribution control']},
-      {q:'What is "loop tuning"?', choices:['Wiring the loop','Setting PID parameters to achieve desired response','Assigning IO addresses','Naming tags']},
-      {q:'What is a "tag" in DCS?', choices:['A physical label on sensor','A unique identifier for a process variable or device in the system','A network packet','A calibration file']},
-      {q:'What is a common cause of measurement drift?', choices:['Stable environment','Aging sensors, fouling, temperature effects','Too much calibration','Using digital signals']},
-      {q:'What is a "pressure transmitter with 3-valve manifold" used for?', choices:['Measuring differential pressure with isolation and calibration ease','For mounting on the wall','For wireless transmission','For power conditioning']},
-      {q:'What is "clogging" in impulse piping and how to avoid it?', choices:['Data overflow','Build-up of process material; use proper impulse piping design and isolation valves','Electrical short','Overheating']},
-      {q:'Why is routine loop checking important during startup?', choices:['To increase wiring length','To ensure correct wiring, calibration and functioning before commissioning','To reduce number of devices','To speed up historian']},
-      {q:'What is the typical action when an instrument fails calibration?', choices:['Ignore it','Repair, recalibrate, or replace the instrument according to maintenance policy','Change controller setpoint','Remove all alarms']},
-      {q:'What is "SIS" in process plants?', choices:['Safety Instrumented System','Simple Instrument Setup','Signal Integration Service','Switch Input System']},
-      {q:'What is the role of sequence of events (SOE) recorder?', choices:['Recording operator logins only','Logging time-stamped events (alarms, trips) for post-incident analysis','Storing control logic','Managing licenses']}
-    ];
+<script>
+// Data default (dari contoh di dokumen)
+let unitsData = [
+  { id: genId(), name: 'Unit A', prated: 150, droop: 0.05 },
+  { id: genId(), name: 'Unit B', prated: 100, droop: 0.04 },
+  { id: genId(), name: 'Unit C', prated: 50, droop: 0.05 }
+];
 
-    const tfPool = [
-      {s:'HART communication can run on the same pair as a 4-20 mA analog signal.', t:true},
-      {s:'FOUNDATION Fieldbus H1 operates at gigabit Ethernet speeds.', t:false},
-      {s:'RTDs generally have better accuracy and stability than thermocouples for moderate temperatures.', t:true},
-      {s:'A smart transmitter cannot provide diagnostic information.', t:false},
-      {s:'A redundant controller improves availability of the control system.', t:true},
-      {s:'Calibration eliminates all measurement errors forever.', t:false},
-      {s:'4-20 mA loops can detect an open-circuit by current dropping to 0 mA.', t:true},
-      {s:'Modbus TCP uses UDP for reliable delivery.', t:false},
-      {s:'Vortex flowmeters have no moving parts.', t:true},
-      {s:'Deadband increases controller sensitivity to small process changes.', t:false},
-      {s:'OPC UA supports secure communication between control systems and enterprise systems.', t:true},
-      {s:'Fieldbus devices are always point-to-point with no multi-drop capability.', t:false},
-      {s:'Loop isolators help prevent ground loop issues.', t:true},
-      {s:'A positioner cannot improve valve resolution.', t:false},
-      {s:'Alarm flooding refers to a situation with many simultaneous alarms.', t:true},
-      {s:'Auto-tune always produces optimal PID parameters without supervision.', t:false},
-      {s:'An LVDT requires an AC excitation signal to operate.', t:true},
-      {s:'Ethernet I/O cannot be integrated with historians.', t:false},
-      {s:'SIS systems are independent safety systems that act to bring the plant to safe state.', t:true},
-      {s:'A transmitter with a 3-valve manifold helps isolate and calibrate pressure transmitters.', t:true}
-    ];
+function genId(){ return 'u' + Math.random().toString(36).slice(2,9); }
 
-    // ===================== BUILD QUIZ =====================
-    function buildQuiz(){
-      // create 100 MCQ by sampling pool (allow repeats if pool smaller), then balance answers A/B/C/D round-robin
-      const mcqCount = 100;
-      const tfCount = 20;
-      const mcqs = [];
-      // shuffle mcqPool copy
-      const pool = [...mcqPool];
-      // ensure we have at least some variety; if not enough, we'll cycle
-      for(let i=0;i<mcqCount;i++){
-        const item = pool[i % pool.length];
-        // clone
-        mcqs.push({q:item.q, choices:[...item.choices]});
-      }
-      // assign answers round-robin to ensure balanced A/B/C/D
-      const choicesCount = 4;
-      for(let i=0;i<mcqs.length;i++){
-        mcqs[i].a = i % choicesCount; // 0..3
-      }
+// --- rendering unit rows ---
+const unitsDiv = document.getElementById('units');
+function renderUnits(){
+  unitsDiv.innerHTML = '';
+  unitsData.forEach((u, idx) => {
+    const row = document.createElement('div');
+    row.className = 'd-flex unit-row align-items-center';
+    row.innerHTML = `
+      <input class="form-control form-control-sm me-2" style="width:110px" data-field="name" value="${u.name}">
+      <input class="form-control form-control-sm me-2" data-field="prated" type="number" style="width:120px" value="${u.prated}" step="1">
+      <input class="form-control form-control-sm me-2" data-field="droop" type="number" style="width:110px" value="${u.droop}" step="0.001">
+      <div class="small-muted me-2">MW | droop (fraction)</div>
+      <button class="btn btn-sm btn-outline-danger btn-remove">Hapus</button>
+    `;
 
-      // build TF set (use pool order, shuffle)
-      const tfs = tfPool.slice(0, tfCount);
-      // if pool smaller, cycle - but our pool has 20
-
-      return {mcqs,tfs};
-    }
-
-    // ===================== APP STATE =====================
-    let quiz = buildQuiz();
-    let combined = []; // will be objects {type:'mcq'|'tf', q, choices?, a?, t?}
-    function combineAndShuffle(){
-      combined = [];
-      quiz.mcqs.forEach(m=>combined.push({type:'mcq', q:m.q, choices:m.choices, a:m.a}));
-      quiz.tfs.forEach((f,i)=>combined.push({type:'tf', q:f.s, t:f.t}));
-      // shuffle
-      for(let i=combined.length-1;i>0;i--){
-        const j=Math.floor(Math.random()*(i+1));[combined[i],combined[j]]=[combined[j],combined[i]];
-      }
-      document.getElementById('qTotal').textContent = combined.length;
-    }
-
-    combineAndShuffle();
-
-    // user results
-    const results = Array(combined.length).fill(null); // {answer, correct, time}
-    let idx = 0;
-    let score=0, correct=0, wrong=0, skipped=0;
-
-    function renderQuestion(){
-      const qEl = document.getElementById('qText');
-      const optsEl = document.getElementById('options');
-      const qTypeEl = document.getElementById('qType');
-      qEl.textContent = '';
-      optsEl.innerHTML = '';
-      if(idx<0) idx=0;
-      if(idx>=combined.length){
-        // quiz finished
-        qEl.textContent = 'Quiz finished — download your results or review answers.';
-        qTypeEl.textContent = 'Finished';
-        document.getElementById('qIndex').textContent = combined.length;
-        return;
-      }
-      const cur = combined[idx];
-      document.getElementById('qIndex').textContent = idx+1;
-      qTypeEl.textContent = cur.type === 'mcq' ? 'MCQ' : 'True/False';
-      qEl.textContent = cur.q;
-
-      if(cur.type==='mcq'){
-        // render 4 options
-        const letters=['A','B','C','D'];
-        cur.choices.forEach((c,i)=>{
-          const b = document.createElement('div');
-          b.className='opt';
-          b.setAttribute('role','button');
-          b.tabIndex=0;
-          b.innerHTML = `<strong>${letters[i]}.</strong> <span style="margin-left:8px">${c}</span>`;
-          b.onclick = ()=>selectMCQ(i,b);
-          b.onkeypress = (e)=>{if(e.key==='Enter') selectMCQ(i,b)};
-          optsEl.appendChild(b);
-        });
-      } else {
-        // true/false buttons
-        const tBtn = document.createElement('div'); tBtn.className='opt'; tBtn.tabIndex=0; tBtn.onclick=()=>selectTF(true,tBtn); tBtn.onkeypress=(e)=>{if(e.key==='Enter')selectTF(true,tBtn)}; tBtn.innerHTML='<strong>TRUE</strong>';
-        const fBtn = document.createElement('div'); fBtn.className='opt'; fBtn.tabIndex=0; fBtn.onclick=()=>selectTF(false,fBtn); fBtn.onkeypress=(e)=>{if(e.key==='Enter')selectTF(false,fBtn)}; fBtn.innerHTML='<strong>FALSE</strong>';
-        const spacer=document.createElement('div'); spacer.style.gridColumn='1 / -1'; spacer.style.height='8px';
-        optsEl.appendChild(tBtn); optsEl.appendChild(fBtn); optsEl.appendChild(spacer);
-      }
-
-      updateSidePanel();
-    }
-
-    function selectMCQ(choiceIndex, elem){
-      const cur = combined[idx];
-      const correctIndex = cur.a;
-      const opts = document.querySelectorAll('.opt');
-      opts.forEach(o=>o.classList.add('disabled'));
-      if(choiceIndex===correctIndex){
-        // correct
-        elem.classList.add('correct'); elem.classList.add('animate-correct');
-        score += 1; correct +=1; results[idx]={answer:choiceIndex, correct:true, time:Date.now()};
-        document.getElementById('score').textContent = score;
-        document.getElementById('scorePanel').textContent = score;
-        document.getElementById('correctCount').textContent = correct;
-      } else {
-        elem.classList.add('wrong'); elem.classList.add('animate-wrong');
-        // highlight correct
-        const optsAll = document.querySelectorAll('.opt');
-        if(optsAll[correctIndex]){ optsAll[correctIndex].classList.add('correct'); }
-        wrong +=1; results[idx]={answer:choiceIndex, correct:false, time:Date.now()};
-        document.getElementById('wrongCount').textContent = wrong;
-      }
-      // auto advance after short delay
-      setTimeout(()=>{ idx++; renderQuestion(); updateProgress(); }, 700);
-    }
-
-    function selectTF(val, elem){
-      const cur = combined[idx];
-      const isCorrect = (val===cur.t);
-      const opts = document.querySelectorAll('.opt');
-      opts.forEach(o=>o.classList.add('disabled'));
-      if(isCorrect){ elem.classList.add('correct'); elem.classList.add('animate-correct'); score+=1; correct+=1; results[idx]={answer:val, correct:true, time:Date.now()}; document.getElementById('score').textContent = score; document.getElementById('scorePanel').textContent = score; document.getElementById('correctCount').textContent = correct; }
-      else { elem.classList.add('wrong'); elem.classList.add('animate-wrong'); wrong+=1; results[idx]={answer:val, correct:false, time:Date.now()}; document.getElementById('wrongCount').textContent = wrong; }
-      setTimeout(()=>{ idx++; renderQuestion(); updateProgress(); }, 700);
-    }
-
-    function skipQuestion(){
-      results[idx]={answer:null, correct:null, time:Date.now()}; skipped++; document.getElementById('skipCount').textContent = skipped; idx++; renderQuestion(); updateProgress();
-    }
-
-    function updateProgress(){
-      const pct = Math.round(((idx)/combined.length)*100);
-      document.getElementById('progressBar').style.width = pct + '%';
-    }
-
-    function updateSidePanel(){
-      document.getElementById('scorePanel').textContent = score;
-      document.getElementById('qTotal').textContent = combined.length;
-    }
-
-    function reshuffle(){
-      // reshuffle combined and reset progression but keep previous results in a separate storage (allow download)
-      // store previous snapshot
-      const snapshot = {time:Date.now(), results:results.slice(), score, correct, wrong, skipped};
-      // create new combined
-      combineAndShuffle();
-      // reset state
-      idx=0; score=0; correct=0; wrong=0; skipped=0;
-      for(let i=0;i<combined.length;i++) results[i]=null;
-      renderQuestion(); updateProgress();
-      alert('Questions reshuffled. Previous results saved in browser session until reload if you download them.');
-    }
-
-    function openReview(){
-      // show a simple review modal using window.open with JSON summary
-      const summary = {total:combined.length, score, correct, wrong, skipped, results};
-      const w = window.open('', '_blank', 'width=600,height=600');
-      w.document.write('<pre style="white-space:pre-wrap;word-wrap:break-word;font-family:monospace">'+JSON.stringify(summary,null,2)+'</pre>');
-    }
-
-    function resetAll(){ if(confirm('Reset quiz and clear results?')){ combineAndShuffle(); idx=0; score=0; correct=0; wrong=0; skipped=0; for(let i=0;i<combined.length;i++)results[i]=null; renderQuestion(); updateProgress(); }}
-
-    function downloadResults(){
-      const payload = {generatedAt: new Date().toISOString(), total:combined.length, score, correct, wrong, skipped, questions:combined, results};
-      const blob = new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = 'dcs_quiz_results.json'; a.click(); URL.revokeObjectURL(url);
-    }
-
-    // initial render
-    renderQuestion(); updateProgress();
-
-    // keyboard: N to skip, R to reshuffle
-    window.addEventListener('keydown', (e)=>{
-      if(e.key==='n' || e.key==='N') skipQuestion();
-      if(e.key==='r' || e.key==='R') reshuffle();
+    // wiring inputs
+    const inputs = row.querySelectorAll('input');
+    inputs.forEach(inp => {
+      inp.addEventListener('input', (e) => {
+        const field = e.target.getAttribute('data-field');
+        if (field === 'prated') u.prated = parseFloat(e.target.value) || 0;
+        if (field === 'droop') u.droop = parseFloat(e.target.value) || 0;
+        if (field === 'name') u.name = e.target.value;
+        computeAndRender();
+      });
     });
-  </script>
+
+    row.querySelector('.btn-remove').addEventListener('click', () => {
+      unitsData = unitsData.filter(x => x.id !== u.id);
+      renderUnits();
+      computeAndRender();
+    });
+
+    unitsDiv.appendChild(row);
+  });
+}
+
+// --- inputs ---
+const fnomInput = document.getElementById('fnom');
+const dampingInput = document.getElementById('damping');
+const deltaPInput = document.getElementById('deltaP');
+
+fnomInput.addEventListener('input', computeAndRender);
+dampingInput.addEventListener('input', computeAndRender);
+deltaPInput.addEventListener('input', computeAndRender);
+
+// buttons
+document.getElementById('btnAddUnit').addEventListener('click', () => {
+  const nextIndex = unitsData.length + 1;
+  unitsData.push({ id: genId(), name: 'Unit ' + nextIndex, prated: 50, droop: 0.05 });
+  renderUnits(); computeAndRender();
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  unitsData = [
+    { id: genId(), name: 'Unit A', prated: 150, droop: 0.05 },
+    { id: genId(), name: 'Unit B', prated: 100, droop: 0.04 },
+    { id: genId(), name: 'Unit C', prated: 50, droop: 0.05 }
+  ];
+  fnomInput.value = 50; dampingInput.value = 10; deltaPInput.value = 120;
+  renderUnits(); computeAndRender();
+});
+
+// --- calculations ---
+function calculate(prated, droop, fnom){
+  // avoid division by zero
+  if (!droop || !fnom) return { S: 0 };
+  const S = prated / (droop * fnom);
+  return { S };
+}
+
+function computeSystem(){
+  const fnom = parseFloat(fnomInput.value) || 50;
+  const D = parseFloat(dampingInput.value) || 0;
+  const deltaP = parseFloat(deltaPInput.value) || 0;
+
+  const units = unitsData.map(u => {
+    const { S } = calculate(u.prated, u.droop, fnom);
+    return { ...u, S };
+  });
+
+  const Rsys = units.reduce((s,u)=>s + (u.S||0), 0);
+  const df = Rsys + D === 0 ? 0 : deltaP / (Rsys + D);
+  const unitContribs = units.map(u => ({ ...u, dP: u.S * df }));
+  const dampingContrib = D * df;
+  const totalGen = unitContribs.reduce((s,u)=>s + u.dP, 0);
+  const finalFreq = fnom - df;
+
+  return {
+    fnom, D, deltaP, units: unitContribs, Rsys, df, dampingContrib, totalGen, finalFreq
+  };
+}
+
+// --- rendering results ---
+let chart = null;
+function computeAndRender(){
+  const res = computeSystem();
+
+  // summary table
+  const summaryTbody = document.getElementById('summaryTbody');
+  summaryTbody.innerHTML = '';
+  const rows = [
+    ['Frekuensi nominal (Hz)', res.fnom.toFixed(3)],
+    ['Total slope sistem ΣS (MW/Hz)', res.Rsys.toFixed(3)],
+    ['Load damping D (MW/Hz)', res.D.toFixed(3)],
+    ['Gangguan ΔP (MW)', res.deltaP.toFixed(3)],
+    ['Deviasi frekuensi Δf (Hz)', res.df.toFixed(6)],
+    ['Frekuensi akhir (Hz)', res.finalFreq.toFixed(6)],
+    ['Kontribusi generator (MW)', res.totalGen.toFixed(3)],
+    ['Kontribusi beban (damping) (MW)', res.dampingContrib.toFixed(3)],
+  ];
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r[0]}</td><td class='monospace'>${r[1]}</td>`;
+    summaryTbody.appendChild(tr);
+  });
+
+  // detail per unit
+  const detailWrap = document.getElementById('detailTableWrapper');
+  detailWrap.innerHTML = '';
+  const table = document.createElement('table');
+  table.className = 'table table-sm table-striped';
+  table.innerHTML = `<thead class='table-light'><tr><th>Unit</th><th>P_rated (MW)</th><th>droop</th><th>S (MW/Hz)</th><th>ΔP_i (MW)</th></tr></thead>`;
+  const tbody = document.createElement('tbody');
+  res.units.forEach(u => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${u.name}</td><td class='monospace'>${u.prated}</td><td class='monospace'>${u.droop}</td><td class='monospace'>${(u.S||0).toFixed(3)}</td><td class='monospace'>${(u.dP||0).toFixed(3)}</td>`;
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  detailWrap.appendChild(table);
+
+  // chart
+  const labels = res.units.map(u => u.name);
+  const data = res.units.map(u => Number((u.dP||0).toFixed(6)));
+  const ctx = document.getElementById('barChart');
+  if (!chart){
+    chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{ label: 'Kontribusi (MW)', data }]
+      },
+      options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+  } else {
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = data;
+    chart.update();
+  }
+}
+
+// initial render
+renderUnits(); computeAndRender();
+
+</script>
+
 </body>
 </html>
